@@ -1,6 +1,6 @@
 // Add your documentation below:
 
-public class CellEntry  implements Index2D {
+public class CellEntry implements Index2D {
 
     @Override
     public boolean isValid() {

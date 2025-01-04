@@ -1,4 +1,6 @@
 import java.io.IOException;
+import java.util.HashSet;
+import java.util.Set;
 // Add your documentation below:
 
 public class Ex2Sheet implements Sheet {
@@ -41,6 +43,7 @@ public class Ex2Sheet implements Sheet {
 
         Cell c = get(x,y);
         if(c!=null) {ans = c.toString();}
+
 
         /////////////////////
         return ans;
@@ -100,11 +103,27 @@ public class Ex2Sheet implements Sheet {
 
     @Override
     public int[][] depth() {
-        int[][] ans = new int[width()][height()];
-        // Add your code here
+        int rows = width();
+        int cols = height();
+        int[][] result = new int[rows][cols];
+        for (int i = 0; i < rows; i++) {
+            for (int j = 0; j < cols; j++) {
+                result[i][j] = computeDepth(i, j, new HashSet<>());
+            }
+        }
+        return result;
+    }
 
-        // ///////////////////
-        return ans;
+    private int computeDepth(int x, int y, Set<String> visited) {
+        SCell cell = new SCell(get(x, y));
+        String content = cell.getContent();
+        if (cell.isNumber(content) || cell.isText(content)) {
+            return 0;
+        } else if (cell.isForm(content)) {
+            if (!visited.add(x + "," + y)) return -1; // Cycle detected
+            return 1; // Placeholder
+        }
+        return -1;
     }
 
     @Override
@@ -121,7 +140,7 @@ public class Ex2Sheet implements Sheet {
         /////////////////////
     }
 
-    @Override
+    /*
     public String eval(int x, int y) {
         String ans = null;
         if(get(x,y) != null) {
@@ -131,13 +150,12 @@ public class Ex2Sheet implements Sheet {
 
         /////////////////////
         return ans;
-    }
+    }*/
 
+    @Override
     public String eval(int x, int y) {
-
         SCell cell = new SCell(get(x, y));
 
-        if (cell == null) return "";
         String content = cell.getContent();
         if (cell.isNumber(content)) {
             return content;
@@ -148,5 +166,17 @@ public class Ex2Sheet implements Sheet {
             return (result == null) ? "ERR_FORM" : result.toString();
         }
         return "ERR_FORM";
+    }
+
+    public String[][] evalAll() {
+        int rows = width();
+        int cols = height();
+        String[][] result = new String[rows][cols];
+        for (int i = 0; i < rows; i++) {
+            for (int j = 0; j < cols; j++) {
+                result[i][j] = eval(i, j);
+            }
+        }
+        return result;
     }
 }

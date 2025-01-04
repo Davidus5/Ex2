@@ -3,40 +3,42 @@
 import java.text.Format;
 
 public class SCell implements Cell {
-    private String line;
-    private int type;
+    private String line;// Stores the content of the cell (could be text, number, or formula)
+    private int type; // Stores the type of the cell (e.g., TEXT, NUMBER, FORM, or error codes)
+
 
     // Add your code here
     public SCell(String s) {
         // Add your code here
-        setData(s);
+        setData(s);// Sets the data and determines its type
     }
 
     public SCell(Cell cell) {
         // Add your code here
-        setData(cell);
+        setData(cell);// Copies the data and type from the provided cell
     }
 
     public boolean isNumber(String text) {
         try {
-            Double.parseDouble(text);
-            return true;
+            Double.parseDouble(text);// Attempts to parse the text as a number
+            return true;// Returns true if parsing succeeds
         } catch (NumberFormatException e) {
-            return false;
+            return false;// Returns false if parsing fails
         }
     }
+    // Helper method: Checks if the given text is plain text (not a number or formula)
     public boolean isText(String text) {
-        return !text.startsWith("=") && !isNumber(text);
+        return !text.startsWith("=") && !isNumber(text);// True if not a formula or number
     }
 
     public boolean isForm(String text) {
-        return text.startsWith("=");
+        return text.startsWith("=");// True if the text starts with '='
     }
 
     public Double computeForm(String form) {
         try {
             if (form.startsWith("=")) {
-                form = form.substring(1); // Remove '='
+                form = form.substring(1); //  Removes '=' to evaluate the expression
             }
             // Basic expression evaluation
             return evaluateExpression(form);
@@ -48,66 +50,74 @@ public class SCell implements Cell {
     private Double evaluateExpression(String expression) {
         // TODO: Implement a proper formula evaluator (considering precedence and parentheses)
         // Placeholder for simple evaluation
-        return 0.0;
+        return 0.0;// Temporary return value
     }
 
     public String getContent() {
-        return line;
+        return line;// Returns the cell's content as a string
     }
 
     @Override
     public int getOrder() {
         // Add your code here
 
-        return 0;
+        return 0;// Returns the default order (to be implemented if needed)
         // ///////////////////
     }
 
     //@Override
     @Override
     public String toString() {
-        return getData();
+        return getData();// Returns the cell's data
     }
 
     @Override
     public void setData(String s) {
         // Add your code here
         // TEXT=1, NUMBER=2, FORM=3, ERR_FORM_FORMAT=-2, ERR_CYCLE_FORM=-1, ERR=-1;
-        line = s;
-
+        line = s;// Assigns the input string to the cell's content
+        // Determines the type of the cell based on its content
         if(isNumber(s)) {
-            type = Ex2Utils.NUMBER;
+            type = Ex2Utils.NUMBER;// Sets type to NUMBER
         }
         else if(isText(s)) {
-            type = Ex2Utils.TEXT;
+            type = Ex2Utils.TEXT;// Sets type to TEXT
         }
         else if(isForm(s)) {
-            type = checkForm(s);
+            type = checkForm(s);// Validates the formula and sets its type
         }
         else {
-            type = Ex2Utils.ERR;
-            line = Ex2Utils.ERR_FORM;
+            type = Ex2Utils.ERR;// Sets type to ERR if content is invalid
+            line = Ex2Utils.ERR_FORM;// Assigns an error message to the cell
         }
     }
 
+    // Validates a formula string and determines if it is well-formed
     private int checkForm(String s){
-        char[] arr = s.toCharArray();
-        String ops = "+-*/";
-        String abc = "ABCDEFGHIJKLOMNPQRSTUVWXYZ";
-        String nums = "0123456789";
-        boolean is_cell = false;
-        int paren = 0;
-        int prev = arr[1];
+        // Logic to check if the formula is valid
+        // Parses the formula character by character to ensure proper syntax
+        char[] arr = s.toCharArray();// Converts the formula to a char array
+        String ops = "+-*/";// Defines valid operators
+        String abc = "ABCDEFGHIJKLOMNPQRSTUVWXYZ";// Defines valid cell letters
+        String nums = "0123456789";// Defines valid digits
+        boolean is_cell = false;// Tracks whether a cell reference is being parsed
+        int paren = 0;// Tracks the balance of parentheses
+        int prev = arr[1];// Tracks the previous character in the formula
+
+        // Initial validation for the first character after '='
         if (!(abc.indexOf(prev) != -1 || nums.indexOf(prev) != -1 || prev == '(')) {
-            return Ex2Utils.ERR_FORM_FORMAT;
+            return Ex2Utils.ERR_FORM_FORMAT;// Invalid formula format
         }
         for (int i = 2; i < arr.length; i++) {
+            // Add validation rules (e.g., operators, numbers, parentheses, etc.)
+            // Details already provided in earlier explanations
+
             if (ops.indexOf(arr[i]) != -1 && abc.indexOf(arr[i]) != -1 && nums.indexOf(arr[i]) != -1 && arr[i] != '.') {
                 return Ex2Utils.ERR_FORM_FORMAT;
             }
 
             if (prev == '.' && nums.indexOf(arr[i]) == -1) {
-                return Ex2Utils.ERR_FORM_FORMAT;
+                return Ex2Utils.ERR_FORM_FORMAT; // Parentheses are not balanced
             }
 
             if (arr[i] == '.' && nums.indexOf(prev) == -1 && is_cell) {
@@ -182,42 +192,40 @@ public class SCell implements Cell {
         }
 
         if(paren != 0){
-            return Ex2Utils.ERR_FORM_FORMAT;
+            return Ex2Utils.ERR_FORM_FORMAT; // Parentheses are not balanced
         }
 
-        return Ex2Utils.FORM;
+        return Ex2Utils.FORM;// Formula is valid
     }
 
     public void setData(Cell s) {
         // Add your code here
-        line = s.getData();
-        type = s.getType();
+        line = s.getData();// Copies the content from the provided cell
+        type = s.getType(); // Copies the type from the provided cell
 
         /////////////////////
     }
 
     @Override
     public String getData() {
-        return line;
+        return line;// Returns the cell's content
     }
 
     @Override
     public int getType() {
-        return type;
+        return type;// Returns the cell's type
     }
 
     @Override
     public void setType(int t) {
-        type = t;
+        type = t;// Updates the cell's type
     }
 
     private int order;
     @Override
     public void setOrder(int t) {
         // Add your code here
-        this.order = t;
+        this.order = t;// Updates the order
         System.out.println("Order has been set to: " + t); // Optional: Log the order change
-
-
     }
 }

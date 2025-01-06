@@ -1,6 +1,8 @@
 // Add your documentation below:
 
 import java.text.Format;
+import java.util.HashSet;
+import java.util.Set;
 
 public class SCell implements Cell {
     private String line;// Stores the content of the cell (could be text, number, or formula)
@@ -213,14 +215,58 @@ public class SCell implements Cell {
 
         return Ex2Utils.FORM;// Formula is valid
     }
+    private boolean hasCycle(Set<Cell> visitedCells) {
+        if (visitedCells.contains(this)) {
+            return true; // Cycle detected
+        }
+        visitedCells.add(this);
+
+        if (type == Ex2Utils.FORM) {
+            // Parse the formula and check for references to other cells
+            String[] dependencies = parseDependencies(line); // Helper to extract referenced cells
+            for (String dep : dependencies) {
+                Cell refCell = getCellFromReference(dep); // Retrieve the referenced cell
+                if (refCell != null && ((SCell) refCell).hasCycle(new HashSet<>(visitedCells))) {
+                    return true; // Cycle detected
+                }
+            }
+        }
+        return false;
+    }
+
+    private String[] parseDependencies(String formula) {
+        // Extract cell references (e.g., A1, B2) from the formula
+        // Example: =A1+B2 would return ["A1", "B2"]
+        // Placeholder logic: Use regex or string parsing to extract references
+        return new String[0];
+    }
+
+    private Cell getCellFromReference(String reference) {
+        // Convert a reference like "A1" into a Cell object
+        // Placeholder: Use Spreadsheet class to fetch the cell
+        return null;
+    }
 
     public void setData(Cell s) {
         // Add your code here
-        line = s.getData();// Copies the content from the provided cell
-        type = s.getType(); // Copies the type from the provided cell
-
-        /////////////////////
+        line = String.valueOf(s);
+        if (isNumber(String.valueOf(s))) {
+            type = Ex2Utils.NUMBER;
+        } else if (isText(String.valueOf(s))) {
+            type = Ex2Utils.TEXT;
+        } else if (isForm(String.valueOf(s))) {
+            if (hasCycle(new HashSet<>())) {
+                type = Ex2Utils.ERR_CYCLE_FORM; // Mark as cycle error
+                line = Ex2Utils.ERR_FORM;
+            } else {
+                type = checkForm(String.valueOf(s));
+            }
+        } else {
+            type = Ex2Utils.ERR;
+            line = Ex2Utils.ERR_FORM;
+        }
     }
+
 
     @Override
     public String getData() {

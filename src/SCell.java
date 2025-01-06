@@ -50,8 +50,19 @@ public class SCell implements Cell {
     private Double evaluateExpression(String expression) {
         // TODO: Implement a proper formula evaluator (considering precedence and parentheses)
         // Placeholder for simple evaluation
-        return 0.0;// Temporary return value
+        if (type == Ex2Utils.NUMBER) {
+            return Double.parseDouble(line); // Return number as-is
+        } else if (type == Ex2Utils.FORM) {
+            Double result = computeForm(line);
+            if (result != null) {
+                return result;
+            } else {
+                throw new IllegalArgumentException("Invalid formula: " + line);
+            }
+        }
+        return null; // For text or empty cells
     }
+
 
     public String getContent() {
         return line;// Returns the cell's content as a string
@@ -59,10 +70,15 @@ public class SCell implements Cell {
 
     @Override
     public int getOrder() {
-        // Add your code here
-
-        return 0;// Returns the default order (to be implemented if needed)
-        // ///////////////////
+        if (type == Ex2Utils.NUMBER || type == Ex2Utils.TEXT) {
+            return 0; // Numbers and text have depth 0
+        }
+        if (type == Ex2Utils.FORM) {
+            // Compute depth based on formula dependencies
+            // Example: If formula depends on other cells, find max depth of dependencies + 1
+            return order; // Placeholder; actual logic depends on formula evaluation
+        }
+        return -1; // Return -1 for errors
     }
 
     //@Override

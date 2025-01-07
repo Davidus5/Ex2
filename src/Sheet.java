@@ -63,6 +63,11 @@ public interface Sheet {
      * @return the string that will be presented in the x,y entry.
      */
     public String value(int x, int y);
+
+    Double computeForm(String form);
+
+    String[][] evalAll();
+
     /**
      * Evaluates (computes) the value of the cell in the x,y coordinate.
      * @param x integer, x-coordinate of the cell.

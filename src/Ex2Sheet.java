@@ -1,3 +1,5 @@
+import javax.script.ScriptEngine;
+import javax.script.ScriptEngineManager;
 import java.io.IOException;
 import java.util.HashSet;
 import java.util.Set;
@@ -74,11 +76,10 @@ public class Ex2Sheet implements Sheet {
     @Override
     public void set(int x, int y, String s) {
         Cell c = new SCell(s);
-        table[x][y] = c;
-        // Add your code here
-
-        /////////////////////
+        table[x][y] = c; // Update the cell content
+        eval(); // Recompute the values of all cells
     }
+
 
     public void set(int x, int y, Cell cell) {
         table[x][y] = cell;
@@ -139,6 +140,91 @@ public class Ex2Sheet implements Sheet {
 
         /////////////////////
     }
+    @Override
+    public Double computeForm(String form) {
+        if (form == null || !form.startsWith("=")) {
+            return null;
+        }
+        try {
+            // Remove the '=' and evaluate the expression
+            String expression = form.substring(1);
+            return evaluateExpression(expression);
+        } catch (Exception e) {
+            return null; // Return null for invalid expressions
+        }
+    }
+
+    // Helper method to evaluate basic arithmetic expressions
+    private Double evaluateExpression(String expression) {
+        // Use a library like ScriptEngine for simple arithmetic parsing
+        ScriptEngineManager manager = new ScriptEngineManager();
+        ScriptEngine engine = manager.getEngineByName("JavaScript");
+        try {
+            Object result = engine.eval(expression);
+            return result instanceof Number ? ((Number) result).doubleValue() : null;
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+
+    // Helper to determine if a string is a valid cell reference
+    private boolean isCellReference(String s) {
+        if (s.length() < 2) return false;
+        char col = s.charAt(0);
+        String row = s.substring(1);
+
+        return Character.isLetter(col) && Character.isDigit(row.charAt(0));
+    }
+
+    // Helper to find the operator index in an expression
+    private int findOperatorIndex(String expression, String operator) {
+        int depth = 0;
+        for (int i = 0; i < expression.length(); i++) {
+            char c = expression.charAt(i);
+            if (c == '(') depth++;
+            else if (c == ')') depth--;
+            else if (depth == 0 && expression.startsWith(operator, i)) {
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    // Helper to perform a calculation
+    private Double calculate(Double left, Double right, String operator) {
+        switch (operator) {
+            case "+":
+                return left + right;
+            case "-":
+                return left - right;
+            case "*":
+                return left * right;
+            case "/":
+                if (Math.abs(right) < Ex2Utils.EPS) {
+                    throw new IllegalArgumentException("Division by zero");
+                }
+                return left / right;
+            default:
+                throw new IllegalArgumentException("Unknown operator: " + operator);
+        }
+    }
+    @Override
+    public String[][] evalAll() {
+        int rows = width();
+        int cols = height();
+        String[][] result = new String[rows][cols];
+        for (int i = 0; i < rows; i++) {
+            for (int j = 0; j < cols; j++) {
+                result[i][j] = eval(i, j); // Compute and store the evaluated value
+            }
+        }
+        return result;
+    }
+
+
+
+
 
     /*
     public String eval(int x, int y) {
@@ -154,29 +240,19 @@ public class Ex2Sheet implements Sheet {
 
     @Override
     public String eval(int x, int y) {
-        SCell cell = new SCell(get(x, y));
+        Cell cell = get(x, y);
+        if (cell instanceof SCell) {
+            SCell sCell = (SCell) cell;
+            String content = sCell.getContent();
 
-        String content = cell.getContent();
-        if (cell.isNumber(content)) {
-            return content;
-        } else if (cell.isText(content)) {
-            return content;
-        } else if (cell.isForm(content)) {
-            Double result = cell.computeForm(content);
-            return (result == null) ? "ERR_FORM" : result.toString();
-        }
-        return "ERR_FORM";
-    }
-
-    public String[][] evalAll() {
-        int rows = width();
-        int cols = height();
-        String[][] result = new String[rows][cols];
-        for (int i = 0; i < rows; i++) {
-            for (int j = 0; j < cols; j++) {
-                result[i][j] = eval(i, j);
+            if (sCell.isNumber(content)) {
+                return content; // It's a number
+            } else if (sCell.isForm(content)) {
+                Double result = computeForm(content); // Compute the formula
+                return (result == null) ? Ex2Utils.ERR_FORM : result.toString();
             }
         }
-        return result;
+        return Ex2Utils.ERR_FORM;
     }
+
 }

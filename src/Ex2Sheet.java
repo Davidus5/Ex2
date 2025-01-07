@@ -145,10 +145,20 @@ public class Ex2Sheet implements Sheet {
         if (form == null || !form.startsWith("=")) {
             return null;
         }
+
         try {
             // Remove the '=' and evaluate the expression
             String expression = form.substring(1);
+
+            // Check if it's a cell reference and handle it
+            if (isCellReference(expression)) {
+                // Extract the cell reference and get its value
+                return evaluateCellReference(expression);
+            }
+
+            // If it's an expression, evaluate it
             return evaluateExpression(expression);
+
         } catch (Exception e) {
             return null; // Return null for invalid expressions
         }
@@ -156,24 +166,67 @@ public class Ex2Sheet implements Sheet {
 
     // Helper method to evaluate basic arithmetic expressions
     private Double evaluateExpression(String expression) {
-        // Use a library like ScriptEngine for simple arithmetic parsing
-        ScriptEngineManager manager = new ScriptEngineManager();
-        ScriptEngine engine = manager.getEngineByName("JavaScript");
+        // Handle formulas with operators
+        for (String operator : Ex2Utils.M_OPS) {
+            int opIndex = findOperatorIndex(expression, operator);
+            if (opIndex != -1) {
+                // Split expression into parts
+                String leftExpr = expression.substring(0, opIndex);
+                String rightExpr = expression.substring(opIndex + operator.length());
+                Double leftValue = evaluateExpression(leftExpr);
+                Double rightValue = evaluateExpression(rightExpr);
+
+                if (leftValue != null && rightValue != null) {
+                    switch (operator) {
+                        case "+":
+                            return leftValue + rightValue;
+                        case "-":
+                            return leftValue - rightValue;
+                        case "*":
+                            return leftValue * rightValue;
+                        case "/":
+                            return leftValue / rightValue;
+                        default:
+                            return null;
+                    }
+                }
+            }
+        }
+
+        // If no operator was found, it might be a simple number or expression in parentheses
+        if (expression.startsWith("(") && expression.endsWith(")")) {
+            return evaluateExpression(expression.substring(1, expression.length() - 1));
+        }
+
+        // Try parsing the expression as a number
         try {
-            Object result = engine.eval(expression);
-            return result instanceof Number ? ((Number) result).doubleValue() : null;
-        } catch (Exception e) {
+            return Double.parseDouble(expression);
+        } catch (NumberFormatException e) {
             return null;
         }
     }
 
+    // Helper method to evaluate cell references like A1, B2, etc.
+    private Double evaluateCellReference(String ref) {
+        // Logic to fetch the value from the corresponding cell based on its reference (e.g., A1, B2)
+        // You should implement logic to convert a cell reference to the correct x, y coordinates
+        int x = xCell(ref); // Extract the column index
+        int y = yCell(ref); // Extract the row index
+
+        if (x != -1 && y != -1) {
+            Cell cell = get(x, y);
+            if (cell != null && cell instanceof SCell) {
+                return ((SCell) cell).computeForm(cell.toString());
+            }
+        }
+        return null; // Return null if the reference is invalid
+    }
 
     // Helper to determine if a string is a valid cell reference
     private boolean isCellReference(String s) {
         if (s.length() < 2) return false;
         char col = s.charAt(0);
         String row = s.substring(1);
-
         return Character.isLetter(col) && Character.isDigit(row.charAt(0));
     }
 
@@ -191,24 +244,6 @@ public class Ex2Sheet implements Sheet {
         return -1;
     }
 
-    // Helper to perform a calculation
-    private Double calculate(Double left, Double right, String operator) {
-        switch (operator) {
-            case "+":
-                return left + right;
-            case "-":
-                return left - right;
-            case "*":
-                return left * right;
-            case "/":
-                if (Math.abs(right) < Ex2Utils.EPS) {
-                    throw new IllegalArgumentException("Division by zero");
-                }
-                return left / right;
-            default:
-                throw new IllegalArgumentException("Unknown operator: " + operator);
-        }
-    }
     @Override
     public String[][] evalAll() {
         int rows = width();

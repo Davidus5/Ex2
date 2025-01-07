@@ -134,16 +134,38 @@ public class Ex2Sheet implements Sheet {
     }
 
     private int computeDepth(int x, int y, Set<String> visited) {
-        SCell cell = new SCell(get(x, y));
-        String content = cell.getContent();
-        if (cell.isNumber(content) || cell.isText(content)) {
-            return 0;
-        } else if (cell.isForm(content)) {
-            if (!visited.add(x + "," + y)) return -1; // Cycle detected
-            return 1; // Placeholder
+        if (!isIn(x, y)) return -1; // Out of bounds
+        String key = x + "," + y;
+        if (!visited.add(key)) return -1; // Circular reference detected
+
+        Cell cell = get(x, y);
+        if (cell instanceof SCell) {
+            SCell sCell = (SCell) cell;
+            String content = sCell.getContent();
+
+            if (sCell.isNumber(content) || sCell.isText(content)) {
+                return 0; // Numbers and text have no dependencies
+            } else if (sCell.isForm(content)) {
+                String formula = content.substring(1); // Remove '='
+                int maxDepth = 0;
+
+                // Split the formula into parts and evaluate dependencies
+                for (String part : formula.split("[+\\-*/()]")) {
+                    part = part.trim();
+                    if (isCellReference(part)) {
+                        int depX = xCell(part);
+                        int depY = yCell(part);
+                        int depDepth = computeDepth(depX, depY, visited);
+                        if (depDepth == -1) return -1; // Circular dependency
+                        maxDepth = Math.max(maxDepth, depDepth);
+                    }
+                }
+                return maxDepth + 1; // Add one for this formula's depth
+            }
         }
-        return -1;
+        return -1; // Invalid content
     }
+
 
     @Override
     public void load(String fileName) throws IOException {

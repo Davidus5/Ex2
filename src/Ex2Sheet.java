@@ -59,11 +59,20 @@ public class Ex2Sheet implements Sheet {
     @Override
     public Cell get(String cords) {
         Cell ans = null;
-        // Add your code here
+        // Check if the input string is valid
+        if (cords != null && cords.length() >= 2) {
+            // Get the column index (A, B, C, ...) and row index (1, 2, 3, ...)
+            int x = xCell(cords);
+            int y = yCell(cords);
 
-        /////////////////////
+            // Check if the indices are valid
+            if (x >= 0 && y >= 0 && isIn(x, y)) {
+                ans = get(x, y); // Get the cell from the table
+            }
+        }
         return ans;
     }
+
 
     @Override
     public int width() {
@@ -143,26 +152,25 @@ public class Ex2Sheet implements Sheet {
     @Override
     public Double computeForm(String form) {
         if (form == null || !form.startsWith("=")) {
-            return null;
+            return null; // Invalid formula if it doesn't start with "="
         }
 
         try {
-            // Remove the '=' and evaluate the expression
-            String expression = form.substring(1);
+            // Remove the "=" and evaluate the expression
+            String expression = form.substring(1).trim();
 
-            // Check if it's a cell reference and handle it
+            // Check if the expression is a cell reference
             if (isCellReference(expression)) {
-                // Extract the cell reference and get its value
-                return evaluateCellReference(expression);
+                return evaluateCellReference(expression); // Handle cell references
             }
 
-            // If it's an expression, evaluate it
+            // Evaluate arithmetic expressions
             return evaluateExpression(expression);
-
         } catch (Exception e) {
-            return null; // Return null for invalid expressions
+            return null; // Invalid formula
         }
     }
+
 
     // Helper method to evaluate basic arithmetic expressions
     private Double evaluateExpression(String expression) {
@@ -170,57 +178,56 @@ public class Ex2Sheet implements Sheet {
         for (String operator : Ex2Utils.M_OPS) {
             int opIndex = findOperatorIndex(expression, operator);
             if (opIndex != -1) {
-                // Split expression into parts
-                String leftExpr = expression.substring(0, opIndex);
-                String rightExpr = expression.substring(opIndex + operator.length());
+                String leftExpr = expression.substring(0, opIndex).trim();
+                String rightExpr = expression.substring(opIndex + operator.length()).trim();
                 Double leftValue = evaluateExpression(leftExpr);
                 Double rightValue = evaluateExpression(rightExpr);
 
                 if (leftValue != null && rightValue != null) {
                     switch (operator) {
-                        case "+":
-                            return leftValue + rightValue;
-                        case "-":
-                            return leftValue - rightValue;
-                        case "*":
-                            return leftValue * rightValue;
-                        case "/":
-                            return leftValue / rightValue;
-                        default:
-                            return null;
+                        case "+": return leftValue + rightValue;
+                        case "-": return leftValue - rightValue;
+                        case "*": return leftValue * rightValue;
+                        case "/": return rightValue != 0 ? leftValue / rightValue : null;
                     }
                 }
             }
         }
 
-        // If no operator was found, it might be a simple number or expression in parentheses
+        // If no operator is found, check for parentheses or a simple number
         if (expression.startsWith("(") && expression.endsWith(")")) {
             return evaluateExpression(expression.substring(1, expression.length() - 1));
         }
 
-        // Try parsing the expression as a number
         try {
-            return Double.parseDouble(expression);
+            return Double.parseDouble(expression); // Parse numbers
         } catch (NumberFormatException e) {
-            return null;
+            return null; // Not a valid number
         }
     }
+
 
     // Helper method to evaluate cell references like A1, B2, etc.
     private Double evaluateCellReference(String ref) {
-        // Logic to fetch the value from the corresponding cell based on its reference (e.g., A1, B2)
-        // You should implement logic to convert a cell reference to the correct x, y coordinates
-        int x = xCell(ref); // Extract the column index
-        int y = yCell(ref); // Extract the row index
+        int x = xCell(ref);
+        int y = yCell(ref);
 
-        if (x != -1 && y != -1) {
+        if (x != -1 && y != -1 && isIn(x, y)) {
             Cell cell = get(x, y);
-            if (cell != null && cell instanceof SCell) {
-                return ((SCell) cell).computeForm(cell.toString());
+            if (cell instanceof SCell) {
+                SCell sCell = (SCell) cell;
+                String content = sCell.getContent();
+
+                if (sCell.isNumber(content)) {
+                    return Double.parseDouble(content);
+                } else if (sCell.isForm(content)) {
+                    return computeForm(content);
+                }
             }
         }
-        return null; // Return null if the reference is invalid
+        return null; // Invalid cell reference
     }
+
 
     // Helper to determine if a string is a valid cell reference
     private boolean isCellReference(String s) {
@@ -242,6 +249,7 @@ public class Ex2Sheet implements Sheet {
             }
         }
         return -1;
+
     }
 
     @Override
@@ -281,13 +289,16 @@ public class Ex2Sheet implements Sheet {
             String content = sCell.getContent();
 
             if (sCell.isNumber(content)) {
-                return content; // It's a number
+                return content; // Return the number as a string
             } else if (sCell.isForm(content)) {
-                Double result = computeForm(content); // Compute the formula
+                Double result = computeForm(content);
                 return (result == null) ? Ex2Utils.ERR_FORM : result.toString();
+            } else if (sCell.isText(content)) {
+                return content; // Return the text as is
             }
         }
-        return Ex2Utils.ERR_FORM;
+        return Ex2Utils.EMPTY_CELL; // Default for empty or invalid cells
     }
+
 
 }

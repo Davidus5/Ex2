@@ -99,20 +99,26 @@ public class Ex2Sheet implements Sheet {
 
     @Override
     public void eval() {
-        int[][] dd = depth();
-        // Add your code here
-
-        // ///////////////////
+        int[][] depths = depth(); // Calculate computational depths
+        for (int x = 0; x < width(); x++) {
+            for (int y = 0; y < height(); y++) {
+                if (depths[x][y] == -1) {
+                    // Handle circular reference
+                    set(x, y, Ex2Utils.ERR_CYCLE);
+                } else {
+                    // Recompute the cell value
+                    String evaluatedValue = value(x, y);
+                    set(x, y, new SCell(evaluatedValue));
+                }
+            }
+        }
     }
 
     @Override
     public boolean isIn(int xx, int yy) {
-        boolean ans = xx>=0 && yy>=0;
-        // Add your code here
-
-        /////////////////////
-        return ans;
+        return xx >= 0 && yy >= 0 && xx < width() && yy < height();
     }
+
 
     @Override
     public int[][] depth() {

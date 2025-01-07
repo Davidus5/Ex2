@@ -1,7 +1,10 @@
 import javax.script.ScriptEngine;
 import javax.script.ScriptEngineManager;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 // Add your documentation below:
 
@@ -138,17 +141,40 @@ public class Ex2Sheet implements Sheet {
 
     @Override
     public void load(String fileName) throws IOException {
-        // Add your code here
+        List<String> lines = Files.readAllLines(Paths.get(fileName));
+        int rows = lines.size();
+        int cols = lines.get(0).split("\t").length;
 
-        /////////////////////
+        // Resize the table to match the loaded data
+        table = new SCell[rows][cols];
+
+        for (int i = 0; i < rows; i++) {
+            String[] cells = lines.get(i).split("\t");
+            for (int j = 0; j < cells.length; j++) {
+                table[i][j] = new SCell(cells[j]);
+            }
+        }
+        eval(); // Re-evaluate all formulas after loading
     }
+
 
     @Override
     public void save(String fileName) throws IOException {
-        // Add your code here
+        StringBuilder sb = new StringBuilder();
 
-        /////////////////////
+        for (int i = 0; i < width(); i++) {
+            for (int j = 0; j < height(); j++) {
+                sb.append(get(i, j).toString());
+                if (j < height() - 1) {
+                    sb.append("\t");
+                }
+            }
+            sb.append(System.lineSeparator());
+        }
+
+        Files.write(Paths.get(fileName), sb.toString().getBytes());
     }
+
     @Override
     public Double computeForm(String form) {
         if (form == null || !form.startsWith("=")) {

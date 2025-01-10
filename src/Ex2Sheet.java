@@ -1,5 +1,4 @@
-import javax.script.ScriptEngine;
-import javax.script.ScriptEngineManager;
+import java.util.Stack;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
@@ -35,7 +34,7 @@ public class Ex2Sheet implements Sheet {
 
     public int yCell(String c) {
         try {
-            return Integer.parseInt(c.substring(1)) - 1;
+            return Integer.parseInt(c.substring(1));
         } catch (NumberFormatException e) {
             return -1;
         }
@@ -47,7 +46,12 @@ public class Ex2Sheet implements Sheet {
         // Add your code here
 
         Cell c = get(x,y);
-        if(c!=null) {ans = c.toString();}
+        if(c!=null) {
+            ans = c.toString();
+            if(c.getType() == Ex2Utils.FORM){
+                ans = eval(x, y);
+            }
+        }
 
 
         /////////////////////
@@ -87,14 +91,11 @@ public class Ex2Sheet implements Sheet {
     }
     @Override
     public void set(int x, int y, String s) {
-        Cell c = new SCell(s);
-        table[x][y] = c; // Update the cell content
-        eval(); // Recompute the values of all cells
-    }
 
+        table[x][y].setData(s);
 
-    public void set(int x, int y, Cell cell) {
-        table[x][y] = cell;
+        // Update the cell content
+        // eval(); // Recompute the values of all cells
     }
 
     @Override
@@ -104,11 +105,10 @@ public class Ex2Sheet implements Sheet {
             for (int y = 0; y < height(); y++) {
                 if (depths[x][y] == -1) {
                     // Handle circular reference
-                    set(x, y, Ex2Utils.ERR_CYCLE);
+                    table[x][y].setType(Ex2Utils.ERR_CYCLE_FORM);
                 } else {
                     // Recompute the cell value
-                    String evaluatedValue = value(x, y);
-                    set(x, y, new SCell(evaluatedValue));
+                    set(x, y, value(x, y));
                 }
             }
         }
@@ -147,6 +147,7 @@ public class Ex2Sheet implements Sheet {
                 return 0; // Numbers and text have no dependencies
             } else if (sCell.isForm(content)) {
                 String formula = content.substring(1); // Remove '='
+                formula = formula.toUpperCase();
                 int maxDepth = 0;
 
                 // Split the formula into parts and evaluate dependencies
@@ -206,60 +207,115 @@ public class Ex2Sheet implements Sheet {
     @Override
     public Double computeForm(String form) {
         if (form == null || !form.startsWith("=")) {
-            return null; // Invalid formula if it doesn't start with "="
-        }
-
-        try {
-            // Remove the "=" and evaluate the expression
-            String expression = form.substring(1).trim();
-
-            // Check if the expression is a cell reference
-            if (isCellReference(expression)) {
-                return evaluateCellReference(expression); // Handle cell references
-            }
-
-            // Evaluate arithmetic expressions
-            return evaluateExpression(expression);
-        } catch (Exception e) {
             return null; // Invalid formula
         }
+
+        form = form.toUpperCase();
+
+        try {
+            // Remove the '=' prefix
+            String expression = form.substring(1).trim();
+
+            // Replace cell references with their evaluated values
+            for (String part : expression.split("[+\\-*/()]")) {
+                part = part.trim();
+                if (isCellReference(part)) {
+                    Double cellValue = evaluateCellReference(part);
+                    if (cellValue == null) {
+                        return null; // Invalid cell reference
+                    }
+                    // Replace the reference in the expression
+                    expression = expression.replace(part, cellValue.toString());
+                }
+            }
+
+            // Evaluate the resulting expression
+            return evaluateExpression(expression);
+        } catch (Exception e) {
+            return null; // Handle invalid expressions gracefully
+        }
     }
 
 
-    // Helper method to evaluate basic arithmetic expressions
-    private Double evaluateExpression(String expression) {
-        // Handle formulas with operators
-        for (String operator : Ex2Utils.M_OPS) {
-            int opIndex = findOperatorIndex(expression, operator);
-            if (opIndex != -1) {
-                String leftExpr = expression.substring(0, opIndex).trim();
-                String rightExpr = expression.substring(opIndex + operator.length()).trim();
-                Double leftValue = evaluateExpression(leftExpr);
-                Double rightValue = evaluateExpression(rightExpr);
 
-                if (leftValue != null && rightValue != null) {
-                    switch (operator) {
-                        case "+": return leftValue + rightValue;
-                        case "-": return leftValue - rightValue;
-                        case "*": return leftValue * rightValue;
-                        case "/": return rightValue != 0 ? leftValue / rightValue : null;
-                    }
+    public static Double evaluateExpression(String expression) {
+        try {
+            return evaluate(expression);
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    private static double evaluate(String expression) {
+        char[] tokens = expression.toCharArray();
+
+        // Stack for numbers
+        Stack<Double> values = new Stack<>();
+
+        // Stack for operators
+        Stack<Character> ops = new Stack<>();
+
+        for (int i = 0; i < tokens.length; i++) {
+            // Skip whitespace
+            if (tokens[i] == ' ') continue;
+
+            // If it's a number, parse the entire number
+            if (Character.isDigit(tokens[i])) {
+                StringBuilder sb = new StringBuilder();
+                while (i < tokens.length && (Character.isDigit(tokens[i]) || tokens[i] == '.')) {
+                    sb.append(tokens[i++]);
                 }
+                values.push(Double.parseDouble(sb.toString()));
+                i--; // Step back because the loop will increment
+            } else if (tokens[i] == '(') {
+                ops.push(tokens[i]);
+            } else if (tokens[i] == ')') {
+                while (ops.peek() != '(') {
+                    values.push(applyOp(ops.pop(), values.pop(), values.pop()));
+                }
+                ops.pop(); // Remove '('
+            } else if (isOperator(tokens[i])) {
+                // While top of 'ops' has same or greater precedence, apply operator
+                while (!ops.isEmpty() && precedence(ops.peek()) >= precedence(tokens[i])) {
+                    values.push(applyOp(ops.pop(), values.pop(), values.pop()));
+                }
+                ops.push(tokens[i]);
             }
         }
 
-        // If no operator is found, check for parentheses or a simple number
-        if (expression.startsWith("(") && expression.endsWith(")")) {
-            return evaluateExpression(expression.substring(1, expression.length() - 1));
+        // Apply remaining operators
+        while (!ops.isEmpty()) {
+            values.push(applyOp(ops.pop(), values.pop(), values.pop()));
         }
 
-        try {
-            return Double.parseDouble(expression); // Parse numbers
-        } catch (NumberFormatException e) {
-            return null; // Not a valid number
-        }
+        return values.pop();
     }
 
+    private static boolean isOperator(char op) {
+        return op == '+' || op == '-' || op == '*' || op == '/';
+    }
+
+    private static int precedence(char op) {
+        if (op == '+' || op == '-') return 1;
+        if (op == '*' || op == '/') return 2;
+        return 0;
+    }
+
+    private static double applyOp(char op, double b, double a) {
+        switch (op) {
+            case '+':
+                return a + b;
+            case '-':
+                return a - b;
+            case '*':
+                return a * b;
+            case '/':
+                if (b == 0) throw new ArithmeticException("Division by zero");
+                return a / b;
+            default:
+                throw new UnsupportedOperationException("Unsupported operator");
+        }
+    }
 
     // Helper method to evaluate cell references like A1, B2, etc.
     private Double evaluateCellReference(String ref) {
@@ -318,22 +374,6 @@ public class Ex2Sheet implements Sheet {
         }
         return result;
     }
-
-
-
-
-
-    /*
-    public String eval(int x, int y) {
-        String ans = null;
-        if(get(x,y) != null) {
-            ans = get(x,y).toString();
-        }
-        // Add your code here
-
-        /////////////////////
-        return ans;
-    }*/
 
     @Override
     public String eval(int x, int y) {

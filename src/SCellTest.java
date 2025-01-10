@@ -68,7 +68,7 @@ class SCellTest {
     void testSetData() {
         SCell source = new SCell("123");
         SCell target = new SCell("");
-        target.setData(source);
+        target.setData(String.valueOf(source));
         assertEquals("123", target.getData(), "setData(Cell) should copy data from source");
         assertEquals(source.getType(), target.getType(), "setData(Cell) should copy type from source");
     }

@@ -13,8 +13,15 @@ public class CellEntry implements Index2D {
     // Checks if the indices are valid (non-negative)
     @Override
     public boolean isValid() {
-        return x >= 0 && y >= 0;
+        // x must be in the range of 'A' to 'Z' or 'a' to 'z'
+        if (x < 0 || x > 25) return false;
+
+        // y must be in the range [0, 99]
+        if (y < 0 || y > 99) return false;
+
+        return true;
     }
+
 
     // Get the column index
     @Override
@@ -46,6 +53,11 @@ public class CellEntry implements Index2D {
     // String representation for debugging purposes
     @Override
     public String toString() {
-        return "(" + x + ", " + y + ")";
+        // Convert x to a column letter (A-Z)
+        char column = (char) ('A' + x);
+
+        // Combine column and row
+        return column + Integer.toString(y);
     }
+
 }

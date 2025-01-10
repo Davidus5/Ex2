@@ -6,6 +6,7 @@ import java.util.Set;
 
 public class SCell implements Cell {
     private String line;// Stores the content of the cell (could be text, number, or formula)
+    private String data;
     private int type; // Stores the type of the cell (e.g., TEXT, NUMBER, FORM, or error codes)
 
 
@@ -13,11 +14,6 @@ public class SCell implements Cell {
     public SCell(String s) {
         // Add your code here
         setData(s);// Sets the data and determines its type
-    }
-
-    public SCell(Cell cell) {
-        // Add your code here
-        setData(cell);// Copies the data and type from the provided cell
     }
 
     public boolean isNumber(String text) {
@@ -93,27 +89,33 @@ public class SCell implements Cell {
     public void setData(String s) {
         // Add your code here
         // TEXT=1, NUMBER=2, FORM=3, ERR_FORM_FORMAT=-2, ERR_CYCLE_FORM=-1, ERR=-1;
-        line = s;// Assigns the input string to the cell's content
+
+        data = s.toUpperCase();
         // Determines the type of the cell based on its content
-        if(isNumber(s)) {
-            type = Ex2Utils.NUMBER;// Sets type to NUMBER
-        }
-        else if(isText(s)) {
-            type = Ex2Utils.TEXT;// Sets type to TEXT
-        }
-        else if(isForm(s)) {
-            type = checkForm(s);// Validates the formula and sets its type
-        }
-        else {
-            type = Ex2Utils.ERR;// Sets type to ERR if content is invalid
-            line = Ex2Utils.ERR_FORM;// Assigns an error message to the cell
+        line = s.toUpperCase();
+
+        if (isNumber(s)) {
+            type = Ex2Utils.NUMBER;
+        } else if (isText(s)) {
+            type = Ex2Utils.TEXT;
+        } else if (isForm(s)) {
+            if (hasCycle(new HashSet<>())) {
+                type = Ex2Utils.ERR_CYCLE_FORM; // Mark as cycle error
+                line = Ex2Utils.ERR_CYCLE;
+            } else {
+                type = checkForm(s);
+            }
+        } else {
+            type = Ex2Utils.ERR;
+            line = Ex2Utils.ERR_FORM;
         }
     }
 
-    // Validates a formula string and determines if it is well-formed
+        // Validates a formula string and determines if it is well-formed
     private int checkForm(String s){
         // Logic to check if the formula is valid
         // Parses the formula character by character to ensure proper syntax
+        s = s.toUpperCase();
         char[] arr = s.toCharArray();// Converts the formula to a char array
         String ops = "+-*/";// Defines valid operators
         String abc = "ABCDEFGHIJKLOMNPQRSTUVWXYZ";// Defines valid cell letters
@@ -247,30 +249,9 @@ public class SCell implements Cell {
         return null;
     }
 
-    public void setData(Cell s) {
-        // Add your code here
-        line = String.valueOf(s);
-        if (isNumber(String.valueOf(s))) {
-            type = Ex2Utils.NUMBER;
-        } else if (isText(String.valueOf(s))) {
-            type = Ex2Utils.TEXT;
-        } else if (isForm(String.valueOf(s))) {
-            if (hasCycle(new HashSet<>())) {
-                type = Ex2Utils.ERR_CYCLE_FORM; // Mark as cycle error
-                line = Ex2Utils.ERR_FORM;
-            } else {
-                type = checkForm(String.valueOf(s));
-            }
-        } else {
-            type = Ex2Utils.ERR;
-            line = Ex2Utils.ERR_FORM;
-        }
-    }
-
-
     @Override
     public String getData() {
-        return line;// Returns the cell's content
+        return data;// Returns the cell's content
     }
 
     @Override

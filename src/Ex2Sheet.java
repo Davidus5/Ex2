@@ -1,10 +1,7 @@
-import java.util.Stack;
+import java.util.*;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
 // Add your documentation below:
 
 public class Ex2Sheet implements Sheet {
@@ -93,9 +90,9 @@ public class Ex2Sheet implements Sheet {
     public void set(int x, int y, String s) {
 
         table[x][y].setData(s);
-
+        ((SCell) table[x][y]).setContent(value(x,y));
         // Update the cell content
-        // eval(); // Recompute the values of all cells
+        eval(); // Recompute the values of all cells
     }
 
     @Override
@@ -108,7 +105,7 @@ public class Ex2Sheet implements Sheet {
                     table[x][y].setType(Ex2Utils.ERR_CYCLE_FORM);
                 } else {
                     // Recompute the cell value
-                    set(x, y, value(x, y));
+                    ((SCell) table[x][y]).setContent(value(x,y));
                 }
             }
         }
@@ -380,12 +377,15 @@ public class Ex2Sheet implements Sheet {
         Cell cell = get(x, y);
         if (cell instanceof SCell) {
             SCell sCell = (SCell) cell;
-            String content = sCell.getContent();
+            String content = sCell.getData();
 
             if (sCell.isNumber(content)) {
                 return content; // Return the number as a string
             } else if (sCell.isForm(content)) {
                 Double result = computeForm(content);
+                if(result == null) {
+                    sCell.setType(Ex2Utils.ERR_FORM_FORMAT);
+                }
                 return (result == null) ? Ex2Utils.ERR_FORM : result.toString();
             } else if (sCell.isText(content)) {
                 return content; // Return the text as is

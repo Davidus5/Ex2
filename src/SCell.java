@@ -2,6 +2,7 @@
 
 import java.text.Format;
 import java.util.HashSet;
+import java.util.Objects;
 import java.util.Set;
 
 public class SCell implements Cell {
@@ -14,6 +15,7 @@ public class SCell implements Cell {
     public SCell(String s) {
         // Add your code here
         setData(s);// Sets the data and determines its type
+        setContent(s);
     }
 
     public boolean isNumber(String text) {
@@ -66,6 +68,18 @@ public class SCell implements Cell {
         return line;// Returns the cell's content as a string
     }
 
+    public void setContent(String s) {
+        line = s;// Sets the cell's content as a string
+        if (type == Ex2Utils.FORM) {
+            if (hasCycle(new HashSet<>())) {
+                line = Ex2Utils.ERR_CYCLE;
+            }
+        }
+        if(type == Ex2Utils.ERR_FORM_FORMAT) {
+            line = Ex2Utils.ERR_FORM;
+        }
+    }
+
     @Override
     public int getOrder() {
         if (type == Ex2Utils.NUMBER || type == Ex2Utils.TEXT) {
@@ -90,20 +104,24 @@ public class SCell implements Cell {
         // Add your code here
         // TEXT=1, NUMBER=2, FORM=3, ERR_FORM_FORMAT=-2, ERR_CYCLE_FORM=-1, ERR=-1;
 
-        data = s.toUpperCase();
         // Determines the type of the cell based on its content
-        line = s.toUpperCase();
+        data = s.toUpperCase();
 
         if (isNumber(s)) {
             type = Ex2Utils.NUMBER;
+            line = s;
         } else if (isText(s)) {
             type = Ex2Utils.TEXT;
+            line = s;
         } else if (isForm(s)) {
             if (hasCycle(new HashSet<>())) {
                 type = Ex2Utils.ERR_CYCLE_FORM; // Mark as cycle error
                 line = Ex2Utils.ERR_CYCLE;
             } else {
                 type = checkForm(s);
+                if(type == Ex2Utils.ERR_FORM_FORMAT) {
+                    line = Ex2Utils.ERR_FORM;
+                }
             }
         } else {
             type = Ex2Utils.ERR;

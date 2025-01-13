@@ -36,7 +36,7 @@ An example of the Ex2 valid Formula & NOT valid formulas
 ![צילום מסך 2025-01-06 131025](https://github.com/user-attachments/assets/c1ec5b5b-211c-4361-81cc-26a568503358)
 -------
 An example of the Ex2 (partial) solution
-                                                                                                                                                                                      ![image](https://github.com/user-attachments/assets/0f048155-d50f-4e7d-b3dc-5c294c6b737e)
+                                                                                                                                                                                     ![image](https://github.com/user-attachments/assets/b7aebd7c-387d-40ec-8bb0-7fdfa638392b)
 
 ------
 ## Project Features

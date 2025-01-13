@@ -1,44 +1,41 @@
 // Add your documentation below:
 
-import java.text.Format;
 import java.util.HashSet;
-import java.util.Objects;
 import java.util.Set;
+import java.util.Stack;
 
 public class SCell implements Cell {
-    private String line;// Stores the content of the cell (could be text, number, or formula)
+    private String line;
     private String data;
-    private int type; // Stores the type of the cell (e.g., TEXT, NUMBER, FORM, or error codes)
+    private int type;
+    private int order;
 
-
-    // Add your code here
     public SCell(String s) {
-        // Add your code here
-        setData(s);// Sets the data and determines its type
+        setData(s);
         setContent(s);
     }
 
     public boolean isNumber(String text) {
         try {
-            Double.parseDouble(text);// Attempts to parse the text as a number
-            return true;// Returns true if parsing succeeds
+            Double.parseDouble(text);
+            return true;
         } catch (NumberFormatException e) {
-            return false;// Returns false if parsing fails
+            return false;
         }
     }
-    // Helper method: Checks if the given text is plain text (not a number or formula)
+
     public boolean isText(String text) {
-        return !text.startsWith("=") && !isNumber(text);// True if not a formula or number
+        return !text.startsWith("=") && !isNumber(text);
     }
 
     public boolean isForm(String text) {
-        return text.startsWith("=");// True if the text starts with '='
+        return text.startsWith("=");
     }
 
     public Double computeForm(String form) {
         try {
             if (form.startsWith("=")) {
-                form = form.substring(1); //  Removes '=' to evaluate the expression
+                form = form.substring(1); // Removes '=' to evaluate the expression
             }
             // Basic expression evaluation
             return evaluateExpression(form);
@@ -48,206 +45,191 @@ public class SCell implements Cell {
     }
 
     private Double evaluateExpression(String expression) {
-        // TODO: Implement a proper formula evaluator (considering precedence and parentheses)
-        // Placeholder for simple evaluation
-        if (type == Ex2Utils.NUMBER) {
-            return Double.parseDouble(line); // Return number as-is
-        } else if (type == Ex2Utils.FORM) {
-            Double result = computeForm(line);
-            if (result != null) {
-                return result;
-            } else {
-                throw new IllegalArgumentException("Invalid formula: " + line);
+        Stack<Double> values = new Stack<>();
+        Stack<Character> ops = new Stack<>();
+
+        for (int i = 0; i < expression.length(); i++) {
+            char current = expression.charAt(i);
+
+            if (Character.isDigit(current) || current == '.') {
+                // Extract full number (could be multi-digit or a float)
+                StringBuilder sb = new StringBuilder();
+                while (i < expression.length() && (Character.isDigit(expression.charAt(i)) || expression.charAt(i) == '.')) {
+                    sb.append(expression.charAt(i++));
+                }
+                values.push(Double.parseDouble(sb.toString()));
+                i--; // Step back because the loop will increment i
+            } else if (current == '(') {
+                ops.push(current);
+            } else if (current == ')') {
+                while (ops.peek() != '(') {
+                    values.push(applyOp(ops.pop(), values.pop(), values.pop()));
+                }
+                ops.pop(); // pop the '('
+            } else if (isOperator(current)) {
+                while (!ops.isEmpty() && hasPrecedence(current, ops.peek())) {
+                    values.push(applyOp(ops.pop(), values.pop(), values.pop()));
+                }
+                ops.push(current);
+            } else if (Character.isLetter(current)) {
+                // Handle references like A1, B2, etc.
+                StringBuilder sb = new StringBuilder();
+                while (i < expression.length() && (Character.isLetter(expression.charAt(i)) || Character.isDigit(expression.charAt(i)))) {
+                    sb.append(expression.charAt(i++));
+                }
+                values.push(handleReference(sb.toString())); // Placeholder for handling cell references
+                i--; // Step back because the loop will increment i
             }
         }
-        return null; // For text or empty cells
+
+        while (!ops.isEmpty()) {
+            values.push(applyOp(ops.pop(), values.pop(), values.pop()));
+        }
+
+        return values.pop();
     }
 
+    private Double handleReference(String ref) {
+        // Placeholder method for handling cell references like A3
+        // In a real implementation, this should look up the value of the referenced cell
+        return 1.0; // Returning a dummy value for now
+    }
+
+    private boolean isOperator(char c) {
+        return c == '+' || c == '-' || c == '*' || c == '/';
+    }
+
+    private boolean hasPrecedence(char op1, char op2) {
+        if (op2 == '(' || op2 == ')') {
+            return false;
+        }
+        return (op1 != '*' && op1 != '/') || (op2 != '+' && op2 != '-');
+    }
+
+    private Double applyOp(char op, Double b, Double a) {
+        switch (op) {
+            case '+': return a + b;
+            case '-': return a - b;
+            case '*': return a * b;
+            case '/': return a / b;
+        }
+        return 0.0;
+    }
 
     public String getContent() {
-        return line;// Returns the cell's content as a string
+        return line; // Returns the cell's content as a string
     }
 
     public void setContent(String s) {
-        line = s;// Sets the cell's content as a string
-        if (type == Ex2Utils.FORM) {
-            if (hasCycle(new HashSet<>())) {
-                line = Ex2Utils.ERR_CYCLE;
-            }
-        }
-        if(type == Ex2Utils.ERR_FORM_FORMAT) {
+        if (type == Ex2Utils.ERR_FORM_FORMAT) {
             line = Ex2Utils.ERR_FORM;
+            data = Ex2Utils.ERR_FORM;
+        } else if (type == Ex2Utils.ERR_CYCLE_FORM) {
+            line = Ex2Utils.ERR_CYCLE;
+            data = Ex2Utils.ERR_CYCLE;
+        } else {
+            line = s;
+            data = s.toUpperCase();
         }
-    }
-
-    @Override
-    public int getOrder() {
-        if (type == Ex2Utils.NUMBER || type == Ex2Utils.TEXT) {
-            return 0; // Numbers and text have depth 0
-        }
-        if (type == Ex2Utils.FORM) {
-            // Compute depth based on formula dependencies
-            // Example: If formula depends on other cells, find max depth of dependencies + 1
-            return order; // Placeholder; actual logic depends on formula evaluation
-        }
-        return -1; // Return -1 for errors
-    }
-
-    //@Override
-    @Override
-    public String toString() {
-        return getData();// Returns the cell's data
     }
 
     @Override
     public void setData(String s) {
-        // Add your code here
-        // TEXT=1, NUMBER=2, FORM=3, ERR_FORM_FORMAT=-2, ERR_CYCLE_FORM=-1, ERR=-1;
-
-        // Determines the type of the cell based on its content
-        data = s.toUpperCase();
-
         if (isNumber(s)) {
             type = Ex2Utils.NUMBER;
+            data = s;
             line = s;
         } else if (isText(s)) {
             type = Ex2Utils.TEXT;
+            data = s.toUpperCase();
             line = s;
         } else if (isForm(s)) {
-            if (hasCycle(new HashSet<>())) {
-                type = Ex2Utils.ERR_CYCLE_FORM; // Mark as cycle error
-                line = Ex2Utils.ERR_CYCLE;
-            } else {
-                type = checkForm(s);
-                if(type == Ex2Utils.ERR_FORM_FORMAT) {
-                    line = Ex2Utils.ERR_FORM;
-                }
+            type = checkForm(s);
+            if (type == Ex2Utils.ERR_FORM_FORMAT) {
+                data = Ex2Utils.ERR_FORM;
+                line = Ex2Utils.ERR_FORM;
+                return;
             }
+            if (hasCycle(new HashSet<>())) {
+                type = Ex2Utils.ERR_CYCLE_FORM;
+                data = Ex2Utils.ERR_CYCLE;
+                line = Ex2Utils.ERR_CYCLE;
+                return;
+            }
+            data = s.toUpperCase();
+            line = s;
         } else {
-            type = Ex2Utils.ERR;
+            type = Ex2Utils.ERR_FORM_FORMAT;
+            data = Ex2Utils.ERR_FORM;
             line = Ex2Utils.ERR_FORM;
         }
     }
 
-        // Validates a formula string and determines if it is well-formed
-    private int checkForm(String s){
-        // Logic to check if the formula is valid
-        // Parses the formula character by character to ensure proper syntax
+    private int checkForm(String s) {
         s = s.toUpperCase();
-        char[] arr = s.toCharArray();// Converts the formula to a char array
-        String ops = "+-*/";// Defines valid operators
-        String abc = "ABCDEFGHIJKLOMNPQRSTUVWXYZ";// Defines valid cell letters
-        String nums = "0123456789";// Defines valid digits
-        boolean is_cell = false;// Tracks whether a cell reference is being parsed
-        int paren = 0;// Tracks the balance of parentheses
-        int prev = arr[1];// Tracks the previous character in the formula
+        char[] arr = s.toCharArray();
+        String ops = "+-*/";
+        String abc = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+        String nums = "0123456789";
+        int paren = 0;
 
-        // Initial validation for the first character after '='
-        if (!(abc.indexOf(prev) != -1 || nums.indexOf(prev) != -1 || prev == '(')) {
-            return Ex2Utils.ERR_FORM_FORMAT;// Invalid formula format
+        if (arr.length < 2 || arr[0] != '=') {
+            return Ex2Utils.ERR_FORM_FORMAT;
         }
+
+        char prev = arr[1];
+        if (!(abc.indexOf(prev) != -1 || nums.indexOf(prev) != -1 || prev == '(')) {
+            return Ex2Utils.ERR_FORM_FORMAT;
+        }
+
         for (int i = 2; i < arr.length; i++) {
-            // Add validation rules (e.g., operators, numbers, parentheses, etc.)
-            // Details already provided in earlier explanations
+            char current = arr[i];
 
-            if (ops.indexOf(arr[i]) != -1 && abc.indexOf(arr[i]) != -1 && nums.indexOf(arr[i]) != -1 && arr[i] != '.') {
+            if (!(ops.indexOf(current) != -1 || abc.indexOf(current) != -1 ||
+                    nums.indexOf(current) != -1 || current == '.' ||
+                    current == '(' || current == ')')) {
                 return Ex2Utils.ERR_FORM_FORMAT;
             }
 
-            if (prev == '.' && nums.indexOf(arr[i]) == -1) {
-                return Ex2Utils.ERR_FORM_FORMAT; // Parentheses are not balanced
+            if (prev == '(' && (ops.indexOf(current) != -1 || current == ')')) {
+                return Ex2Utils.ERR_FORM_FORMAT;
             }
-
-            if (arr[i] == '.' && nums.indexOf(prev) == -1 && is_cell) {
+            if (ops.indexOf(prev) != -1 && (ops.indexOf(current) != -1 || current == ')')) {
                 return Ex2Utils.ERR_FORM_FORMAT;
             }
 
-            if (prev == ')' && (ops.indexOf(arr[i]) == -1 && arr[i] != ')'))
-            {
-                return Ex2Utils.ERR_FORM_FORMAT;
+            if (current == '(') {
+                paren++;
             }
-
-            if((ops.indexOf(prev) != -1 || prev == '(') && ops.indexOf(arr[i]) != -1)// checks operation is not followed by another operation
-            {
-                return Ex2Utils.ERR_FORM_FORMAT;
-            }
-
-            if(ops.indexOf(prev) != -1 && arr[i] == ')')// checks operation is not followed by another operation
-            {
-                return Ex2Utils.ERR_FORM_FORMAT;
-            }
-
-            if(abc.indexOf(prev) != -1 && nums.indexOf(arr[i]) == -1) // checks letter is followed by number
-            {
-                return Ex2Utils.ERR_FORM_FORMAT;
-            }
-
-            if(prev == '(' && arr[i] == ')')
-            {
-                return Ex2Utils.ERR_FORM_FORMAT;
-            }
-
-            if(prev == '(')
-            {
-                ++paren;
-            }
-            if(prev == ')')
-            {
-                --paren;
+            if (current == ')') {
+                paren--;
                 if (paren < 0) {
                     return Ex2Utils.ERR_FORM_FORMAT;
                 }
             }
 
-            if (abc.indexOf(arr[i]) != -1)
-            {
-                is_cell = true;
-            }
-
-            if(is_cell && arr[i] == '('){
-                return Ex2Utils.ERR_FORM_FORMAT;
-            }
-
-            if(is_cell && nums.indexOf(arr[i]) == -1)
-            {
-                is_cell = false;
-            }
-
-            prev = arr[i];
+            prev = current;
         }
 
-        if(prev == ')')
-        {
-            --paren;
-            if (paren < 0) {
-                return Ex2Utils.ERR_FORM_FORMAT;
-            }
-        }
-
-        if(prev != ')' && nums.indexOf(prev) == -1)
-        {
+        if (paren != 0 || ops.indexOf(prev) != -1) {
             return Ex2Utils.ERR_FORM_FORMAT;
         }
 
-        if(paren != 0){
-            return Ex2Utils.ERR_FORM_FORMAT; // Parentheses are not balanced
-        }
-
-        return Ex2Utils.FORM;// Formula is valid
+        return Ex2Utils.FORM;
     }
+
     private boolean hasCycle(Set<Cell> visitedCells) {
         if (visitedCells.contains(this)) {
-            return true; // Cycle detected
+            return true;
         }
         visitedCells.add(this);
 
         if (type == Ex2Utils.FORM) {
-            // Parse the formula and check for references to other cells
-            String[] dependencies = parseDependencies(line); // Helper to extract referenced cells
+            String[] dependencies = parseDependencies(line);
             for (String dep : dependencies) {
-                Cell refCell = getCellFromReference(dep); // Retrieve the referenced cell
+                Cell refCell = getCellFromReference(dep);
                 if (refCell != null && ((SCell) refCell).hasCycle(new HashSet<>(visitedCells))) {
-                    return true; // Cycle detected
+                    return true;
                 }
             }
         }
@@ -255,38 +237,53 @@ public class SCell implements Cell {
     }
 
     private String[] parseDependencies(String formula) {
-        // Extract cell references (e.g., A1, B2) from the formula
-        // Example: =A1+B2 would return ["A1", "B2"]
-        // Placeholder logic: Use regex or string parsing to extract references
         return new String[0];
     }
 
     private Cell getCellFromReference(String reference) {
-        // Convert a reference like "A1" into a Cell object
-        // Placeholder: Use Spreadsheet class to fetch the cell
         return null;
     }
 
     @Override
+    public String toString() {
+        if (type == Ex2Utils.ERR_FORM_FORMAT || type == Ex2Utils.ERR_CYCLE_FORM) {
+            return line;
+        }
+        return data;
+    }
+
+    @Override
     public String getData() {
-        return data;// Returns the cell's content
+        if (type == Ex2Utils.ERR_FORM_FORMAT || type == Ex2Utils.ERR_CYCLE_FORM) {
+            return line;
+        }
+        return data;
     }
 
     @Override
     public int getType() {
-        return type;// Returns the cell's type
+        return type;
     }
 
     @Override
     public void setType(int t) {
-        type = t;// Updates the cell's type
+        type = t;
     }
 
-    private int order;
     @Override
     public void setOrder(int t) {
-        // Add your code here
-        this.order = t;// Updates the order
-        System.out.println("Order has been set to: " + t); // Optional: Log the order change
+        this.order = t;
+    }
+
+    @Override
+    public int getOrder() {
+        if (type == Ex2Utils.NUMBER || type == Ex2Utils.TEXT) {
+            return 0;
+        }
+        if (type == Ex2Utils.FORM) {
+            return order;
+        }
+        return -1;
     }
 }
+

@@ -32,92 +32,80 @@ public class SCell implements Cell {
         return text.startsWith("=");
     }
 
-    public Double computeForm(String form) {
-        try {
-            if (form.startsWith("=")) {
-                form = form.substring(1); // Removes '=' to evaluate the expression
+    private int checkForm(String s) {
+        if (s.length() < 2) return Ex2Utils.ERR_FORM_FORMAT;
+
+        // Remove the '=' sign for checking
+        s = s.substring(1).toUpperCase();
+
+        // Empty formula
+        if (s.isEmpty() || s.equals("()")) return Ex2Utils.ERR_FORM_FORMAT;
+
+        Stack<Character> parentheses = new Stack<>();
+        char prev = ' ';
+        boolean hasOperand = false;
+
+        for (int i = 0; i < s.length(); i++) {
+            char c = s.charAt(i);
+
+            // Check for valid characters
+            if (!isValidChar(c)) return Ex2Utils.ERR_FORM_FORMAT;
+
+            // Handle parentheses
+            if (c == '(') {
+                parentheses.push(c);
+                if (isOperand(prev)) return Ex2Utils.ERR_FORM_FORMAT;
             }
-            // Basic expression evaluation
-            return evaluateExpression(form);
-        } catch (Exception e) {
-            return null; // Invalid formula
+            else if (c == ')') {
+                if (parentheses.isEmpty()) return Ex2Utils.ERR_FORM_FORMAT;
+                parentheses.pop();
+                if (!hasOperand) return Ex2Utils.ERR_FORM_FORMAT;
+            }
+            // Handle operators
+            else if (isOperator(c)) {
+                if (i == 0 && c != '-') return Ex2Utils.ERR_FORM_FORMAT;
+                if (i == s.length() - 1) return Ex2Utils.ERR_FORM_FORMAT;
+                if (isOperator(prev) || prev == '(') return Ex2Utils.ERR_FORM_FORMAT;
+            }
+            // Handle digits
+            else if (Character.isDigit(c) || c == '.') {
+                if (prev == ')') return Ex2Utils.ERR_FORM_FORMAT;
+                hasOperand = true;
+            }
+            // Handle cell references
+            else if (Character.isLetter(c)) {
+                if (prev == ')' || isOperand(prev)) return Ex2Utils.ERR_FORM_FORMAT;
+                // Collect the full cell reference
+                StringBuilder ref = new StringBuilder().append(c);
+                while (i + 1 < s.length() && Character.isDigit(s.charAt(i + 1))) {
+                    ref.append(s.charAt(++i));
+                }
+                hasOperand = true;
+            }
+
+            prev = c;
         }
+
+        // Check for unmatched parentheses
+        if (!parentheses.isEmpty()) return Ex2Utils.ERR_FORM_FORMAT;
+
+        // Must have at least one operand
+        if (!hasOperand) return Ex2Utils.ERR_FORM_FORMAT;
+
+        return Ex2Utils.FORM;
     }
 
-    private Double evaluateExpression(String expression) {
-        Stack<Double> values = new Stack<>();
-        Stack<Character> ops = new Stack<>();
-
-        for (int i = 0; i < expression.length(); i++) {
-            char current = expression.charAt(i);
-
-            if (Character.isDigit(current) || current == '.') {
-                // Extract full number (could be multi-digit or a float)
-                StringBuilder sb = new StringBuilder();
-                while (i < expression.length() && (Character.isDigit(expression.charAt(i)) || expression.charAt(i) == '.')) {
-                    sb.append(expression.charAt(i++));
-                }
-                values.push(Double.parseDouble(sb.toString()));
-                i--; // Step back because the loop will increment i
-            } else if (current == '(') {
-                ops.push(current);
-            } else if (current == ')') {
-                while (ops.peek() != '(') {
-                    values.push(applyOp(ops.pop(), values.pop(), values.pop()));
-                }
-                ops.pop(); // pop the '('
-            } else if (isOperator(current)) {
-                while (!ops.isEmpty() && hasPrecedence(current, ops.peek())) {
-                    values.push(applyOp(ops.pop(), values.pop(), values.pop()));
-                }
-                ops.push(current);
-            } else if (Character.isLetter(current)) {
-                // Handle references like A1, B2, etc.
-                StringBuilder sb = new StringBuilder();
-                while (i < expression.length() && (Character.isLetter(expression.charAt(i)) || Character.isDigit(expression.charAt(i)))) {
-                    sb.append(expression.charAt(i++));
-                }
-                values.push(handleReference(sb.toString())); // Placeholder for handling cell references
-                i--; // Step back because the loop will increment i
-            }
-        }
-
-        while (!ops.isEmpty()) {
-            values.push(applyOp(ops.pop(), values.pop(), values.pop()));
-        }
-
-        return values.pop();
-    }
-
-    private Double handleReference(String ref) {
-        // Placeholder method for handling cell references like A3
-        // In a real implementation, this should look up the value of the referenced cell
-        return 1.0; // Returning a dummy value for now
+    private boolean isValidChar(char c) {
+        return Character.isLetterOrDigit(c) || c == '+' || c == '-' || c == '*' || c == '/' ||
+                c == '(' || c == ')' || c == '.';
     }
 
     private boolean isOperator(char c) {
         return c == '+' || c == '-' || c == '*' || c == '/';
     }
 
-    private boolean hasPrecedence(char op1, char op2) {
-        if (op2 == '(' || op2 == ')') {
-            return false;
-        }
-        return (op1 != '*' && op1 != '/') || (op2 != '+' && op2 != '-');
-    }
-
-    private Double applyOp(char op, Double b, Double a) {
-        switch (op) {
-            case '+': return a + b;
-            case '-': return a - b;
-            case '*': return a * b;
-            case '/': return a / b;
-        }
-        return 0.0;
-    }
-
-    public String getContent() {
-        return line; // Returns the cell's content as a string
+    private boolean isOperand(char c) {
+        return Character.isLetterOrDigit(c) || c == ')';
     }
 
     public void setContent(String s) {
@@ -165,59 +153,6 @@ public class SCell implements Cell {
         }
     }
 
-    private int checkForm(String s) {
-        s = s.toUpperCase();
-        char[] arr = s.toCharArray();
-        String ops = "+-*/";
-        String abc = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-        String nums = "0123456789";
-        int paren = 0;
-
-        if (arr.length < 2 || arr[0] != '=') {
-            return Ex2Utils.ERR_FORM_FORMAT;
-        }
-
-        char prev = arr[1];
-        if (!(abc.indexOf(prev) != -1 || nums.indexOf(prev) != -1 || prev == '(')) {
-            return Ex2Utils.ERR_FORM_FORMAT;
-        }
-
-        for (int i = 2; i < arr.length; i++) {
-            char current = arr[i];
-
-            if (!(ops.indexOf(current) != -1 || abc.indexOf(current) != -1 ||
-                    nums.indexOf(current) != -1 || current == '.' ||
-                    current == '(' || current == ')')) {
-                return Ex2Utils.ERR_FORM_FORMAT;
-            }
-
-            if (prev == '(' && (ops.indexOf(current) != -1 || current == ')')) {
-                return Ex2Utils.ERR_FORM_FORMAT;
-            }
-            if (ops.indexOf(prev) != -1 && (ops.indexOf(current) != -1 || current == ')')) {
-                return Ex2Utils.ERR_FORM_FORMAT;
-            }
-
-            if (current == '(') {
-                paren++;
-            }
-            if (current == ')') {
-                paren--;
-                if (paren < 0) {
-                    return Ex2Utils.ERR_FORM_FORMAT;
-                }
-            }
-
-            prev = current;
-        }
-
-        if (paren != 0 || ops.indexOf(prev) != -1) {
-            return Ex2Utils.ERR_FORM_FORMAT;
-        }
-
-        return Ex2Utils.FORM;
-    }
-
     private boolean hasCycle(Set<Cell> visitedCells) {
         if (visitedCells.contains(this)) {
             return true;
@@ -237,15 +172,33 @@ public class SCell implements Cell {
     }
 
     private String[] parseDependencies(String formula) {
-        return new String[0];
+        if (!formula.startsWith("=")) return new String[0];
+
+        formula = formula.substring(1).toUpperCase();
+        Set<String> deps = new HashSet<>();
+        StringBuilder currentRef = new StringBuilder();
+
+        for (int i = 0; i < formula.length(); i++) {
+            char c = formula.charAt(i);
+            if (Character.isLetter(c)) {
+                currentRef = new StringBuilder().append(c);
+                while (i + 1 < formula.length() && Character.isDigit(formula.charAt(i + 1))) {
+                    currentRef.append(formula.charAt(++i));
+                }
+                deps.add(currentRef.toString());
+            }
+        }
+
+        return deps.toArray(new String[0]);
     }
 
     private Cell getCellFromReference(String reference) {
+        // This should be implemented based on your spreadsheet implementation
         return null;
     }
 
     @Override
-    public String toString() {
+    public String getData() {
         if (type == Ex2Utils.ERR_FORM_FORMAT || type == Ex2Utils.ERR_CYCLE_FORM) {
             return line;
         }
@@ -253,7 +206,12 @@ public class SCell implements Cell {
     }
 
     @Override
-    public String getData() {
+    public String getContent() {
+        return line;
+    }
+
+    @Override
+    public String toString() {
         if (type == Ex2Utils.ERR_FORM_FORMAT || type == Ex2Utils.ERR_CYCLE_FORM) {
             return line;
         }
@@ -286,4 +244,3 @@ public class SCell implements Cell {
         return -1;
     }
 }
-

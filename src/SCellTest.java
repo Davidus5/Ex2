@@ -29,13 +29,7 @@ class SCellTest {
         assertFalse(cell.isForm("hello"), "Plain text should not be recognized as a formula");
     }
 
-    @Test
-    void computeForm() {
-        SCell cell = new SCell("");
-        assertEquals(3.0, cell.computeForm("=1+2"), 0.001, "Formula =1+2 should compute to 3.0");
-        assertEquals(9.0, cell.computeForm("=3*3"), 0.001, "Formula =3*3 should compute to 9.0");
-        assertNull(cell.computeForm("=1/0"), "Division by zero should return null");
-    }
+
 
     @Test
     void getContent() {
